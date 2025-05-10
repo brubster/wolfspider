@@ -1,7 +1,8 @@
-[gd_scene load_steps=7 format=3 uid="uid://uya6tppy0ihn"]
+[gd_scene load_steps=8 format=3 uid="uid://uya6tppy0ihn"]
 
 [ext_resource type="Script" uid="uid://xys1c8evc2qi" path="res://player/player.gd" id="1_oul6g"]
 [ext_resource type="Texture2D" uid="uid://dtrb640uee5pa" path="res://icon.svg" id="2_rkbax"]
+[ext_resource type="Script" uid="uid://ehrnlwhpytkr" path="res://player/camera_interpolation.gd" id="3_g1dw6"]
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_oul6g"]
 height = 1.8
@@ -37,8 +38,11 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
 unique_name_in_owner = true
 
 [node name="Camera" type="Camera3D" parent="CameraPosition/CameraPivot"]
+physics_interpolation_mode = 2
 cull_mask = 1048573
 fov = 80.0
+script = ExtResource("3_g1dw6")
+follow_target = NodePath("..")
 
 [node name="UncrouchShapecast" type="ShapeCast3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, -1, 8.74228e-08, 0, -8.74228e-08, -1, 0, 1, 0)
