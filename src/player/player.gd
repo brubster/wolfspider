@@ -1,6 +1,9 @@
 extends CharacterBody3D
 
 
+# TODO: Camera "jitter" when crouching mid-air
+
+
 @export_group("Controls")
 @export var AUTO_BHOP: bool = false
 @export var MOUSE_SENSITIVITY: float = 0.05
@@ -15,7 +18,8 @@ extends CharacterBody3D
 @export var FRICTION: float = 7.0
 @export_subgroup("Air")
 @export var GRAVITY: float = 15.34
-@export var JUMP_IMPULSE: float = sqrt(2 * GRAVITY * 0.85)
+#@export var JUMP_IMPULSE: float = sqrt(2 * GRAVITY * 0.85)
+@export var JUMP_IMPULSE: float = sqrt(2 * GRAVITY * 0.93)
 
 
 @onready var camera_pivot := %CameraPivot as Node3D
