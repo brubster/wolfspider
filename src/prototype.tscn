@@ -1,0 +1,41 @@
+[gd_scene load_steps=8 format=3 uid="uid://cu6kbyoghe3f6"]
+
+[ext_resource type="Texture2D" uid="uid://drygut34tvuuv" path="res://prototype_assets/hdri/kloofendal_48d_partly_cloudy_puresky_2k.hdr" id="1_gxbh7"]
+[ext_resource type="PackedScene" uid="uid://uya6tppy0ihn" path="res://player/player.tscn" id="2_7fmhn"]
+[ext_resource type="Material" uid="uid://b65qpiu70kgch" path="res://prototype_assets/textures/materials/gray.tres" id="2_vo8sw"]
+[ext_resource type="Material" uid="uid://bfqadvx5jfxf6" path="res://prototype_assets/textures/materials/orange.tres" id="3_883nb"]
+
+[sub_resource type="PanoramaSkyMaterial" id="PanoramaSkyMaterial_vo8sw"]
+panorama = ExtResource("1_gxbh7")
+
+[sub_resource type="Sky" id="Sky_883nb"]
+sky_material = SubResource("PanoramaSkyMaterial_vo8sw")
+
+[sub_resource type="Environment" id="Environment_7fmhn"]
+background_mode = 2
+sky = SubResource("Sky_883nb")
+tonemap_mode = 3
+
+[node name="Prototype" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_7fmhn")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="WorldEnvironment"]
+transform = Transform3D(1, 0, 0, 0, 0.258819, 0.965926, 0, -0.965926, 0.258819, 0, 0, 0)
+
+[node name="Level" type="Node3D" parent="."]
+
+[node name="Player" parent="Level" instance=ExtResource("2_7fmhn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 0)
+
+[node name="Ground" type="CSGBox3D" parent="Level"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+use_collision = true
+size = Vector3(20, 1, 20)
+material = ExtResource("2_vo8sw")
+
+[node name="Box" type="CSGBox3D" parent="Level"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0.5, 0)
+use_collision = true
+material = ExtResource("3_883nb")
