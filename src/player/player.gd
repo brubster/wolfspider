@@ -1,8 +1,11 @@
+class_name Player
 extends CharacterBody3D
-
+## Self-contained player script
+## 
+## Handles control input and player movement.
+## TODO: player/weapon logic?
 
 # TODO: Camera "jitter" when crouching mid-air
-
 
 @export_group("Controls")
 @export var AUTO_BHOP: bool = false
@@ -18,22 +21,18 @@ extends CharacterBody3D
 @export var FRICTION: float = 7.0
 @export_subgroup("Air")
 @export var GRAVITY: float = 15.34
-#@export var JUMP_IMPULSE: float = sqrt(2 * GRAVITY * 0.85)
 @export var JUMP_IMPULSE: float = sqrt(2 * GRAVITY * 0.93)
-
 
 @onready var camera_pivot := %CameraPivot as Node3D
 @onready var collider := $Collider as CollisionShape3D
 @onready var uncrouch_shapecast := $UncrouchShapecast as ShapeCast3D
 @onready var mesh := $Mesh as MeshInstance3D
 
-
 # Input variables
 var _wish_dir: Vector3
 var _wish_jump: bool
 var _wish_sprint: bool
 var _wish_crouch: bool
-
 
 # State
 # -- TODO: Mainly for tracking animation to play? Idk
@@ -51,11 +50,15 @@ enum State {
 
 
 func _ready() -> void:
-	Input.set_use_accumulated_input(false)  # TODO: https://yosoyfreeman.github.io/article/godot/tutorial/achieving-better-mouse-input-in-godot-4-the-perfect-camera-controller
+	Input.set_use_accumulated_input(false)  # https://yosoyfreeman.github.io/article/godot/tutorial/achieving-better-mouse-input-in-godot-4-the-perfect-camera-controller
 	
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	self.floor_constant_speed = true  # Make player move at constant speed up slopes
 	self.floor_snap_length = 0.1  # Default value
+
+
+func _exit_tree() -> void:
+	Input.set_use_accumulated_input(true)  # Turn accumulated input back on when player is not instantiated to reduce CPU load
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -74,14 +77,14 @@ func _physics_process(delta: float) -> void:
 		crouch(delta)
 	#elif _is_crouched:
 	else:  # TODO: should only be called when ACTUALLY crouched, but this is needed to prevent partially crouching and not uncrouching automatically (due to the scuffed crouch() function)
-		try_uncrouch()
+		try_uncrouch(delta)
 	
 	_process_movement(delta)
 
 
 func _process_input() -> void:
 	# Movement direction
-	var input_dir: Vector2 = Input.get_vector(&"move_left", &"move_right", \
+	var input_dir: Vector2 = Input.get_vector(&"move_left", &"move_right",
 			&"move_forward", &"move_backward")
 	_wish_dir = (transform.basis * Vector3(input_dir.x, 0.0, input_dir.y)).normalized()
 	
@@ -125,15 +128,15 @@ func _mouse_look(event: InputEventMouseMotion) -> void:
 
 
 func crouch(delta: float) -> void:
-	if collider.scale.y <= 0.5:
+	if collider.shape.height <= 0.8:
 		_is_crouched = true
 		return
 	
-	collider.scale.y -= 5.0 * delta  # 1.8m * 5% = 0.09
-	collider.scale.y = clampf(collider.scale.y, 0.5, 1.0)
+	collider.shape.height -= 7.0 * delta
+	collider.shape.height = clampf(collider.shape.height, 0.8, 1.6)
 	
-	mesh.scale.y -= 5.0 * delta
-	mesh.scale.y = clampf(mesh.scale.y, 0.5, 1.0)
+	mesh.mesh.height -= 7.0 * delta
+	mesh.mesh.height = clampf(mesh.mesh.height, 0.8, 1.6)
 	
 	#if is_on_floor():
 	#	move_and_collide(Vector3(0.0, -0.5 * delta, 0.0))
@@ -142,12 +145,12 @@ func crouch(delta: float) -> void:
 
 
 # Returns a boolean whether the player can uncrouch or not
-func try_uncrouch() -> bool:
+func try_uncrouch(_delta: float) -> bool:
 	if uncrouch_shapecast.is_colliding():
 		return false
 	else:
-		collider.scale.y = 1.0
-		mesh.scale.y = 1.0
+		collider.shape.height = 1.6
+		mesh.mesh.height = 1.6
 		#move_and_collide(Vector3(0.0, 0.1, 0.0))
 		_is_crouched = false
 		return true
@@ -182,7 +185,7 @@ func update_velocity_air(delta: float) -> Vector3:
 	return accelerate(MAX_VELOCITY_AIR, delta)
 
 
-func get_max_speed_ground() -> float:  # TODO
+func get_max_speed_ground() -> float:  # TODO: can this design be improved?
 	if Input.is_action_pressed(&"crouch"):
 		return MAX_VELOCITY_CROUCH
 	return MAX_VELOCITY_SPRINT if _wish_sprint else MAX_VELOCITY_WALK
