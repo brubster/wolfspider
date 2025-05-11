@@ -231,6 +231,6 @@ func update_velocity_air(delta: float) -> Vector3:
 
 
 func get_max_speed_ground() -> float:  # TODO: can this design be improved?
-	if Input.is_action_pressed(&"crouch"):
+	if _crouch_state != CrouchState.STANDING:
 		return MAX_VELOCITY_CROUCH
 	return MAX_VELOCITY_SPRINT if _wish_sprint else MAX_VELOCITY_WALK
