@@ -4,8 +4,8 @@ extends CharacterBody3D
 ## 
 ## Handles control input and player movement.
 ## TODO: player/weapon logic?
+## TODO: Camera "jitter" when crouching mid-air
 
-# TODO: Camera "jitter" when crouching mid-air
 
 @export_group("Debug")
 @export var DEBUG_THIRD_PERSON: bool = false
@@ -25,10 +25,16 @@ extends CharacterBody3D
 @export var GRAVITY: float = 15.34
 @export var JUMP_IMPULSE: float = sqrt(2 * GRAVITY * 0.93)
 
+@onready var camera_position := $CameraPosition as Node3D
 @onready var camera_pivot := %CameraPivot as Node3D
-@onready var collider := $Collider as CollisionShape3D
 @onready var uncrouch_shapecast := $UncrouchShapecast as ShapeCast3D
-@onready var mesh := $Mesh as MeshInstance3D
+@onready var collider := $Collider as CollisionShape3D
+
+# Original values for crouch tweening
+@onready var camera_position_original_y_position: float = camera_position.position.y
+@onready var collider_original_height: float = collider.shape.height
+@onready var collider_original_y_position: float = collider.position.y
+@onready var uncrouch_shapecast_original_y_position: float = uncrouch_shapecast.position.y
 
 # Input variables
 var _wish_dir: Vector3
@@ -38,7 +44,6 @@ var _wish_crouch: bool
 
 # State
 # -- TODO: Mainly for tracking animation to play? Idk
-var _is_crouched: bool  # TODO: temp...
 enum State {
 	IDLE,
 	WALK,
@@ -49,6 +54,14 @@ enum State {
 	FALL,  #       needed?
 }
 #var _state: State = State.IDLE
+
+
+enum CrouchState {
+	STANDING,
+	CROUCHED_GROUND,
+	CROUCHED_AIR,
+}
+var _crouch_state: CrouchState = CrouchState.STANDING
 
 
 func _ready() -> void:
@@ -76,27 +89,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		_mouse_look(event as InputEventMouseMotion)
 
 
-var crouched_air: bool
-var crouched_ground: bool
 func _physics_process(delta: float) -> void:
 	_process_input()
 	
-	if _wish_crouch and not (crouched_ground or crouched_air):
-		#crouch(delta)
-		if is_on_floor():
-			$CrouchAnimationPlayer.play(&"crouch_ground")
-			crouched_ground = true
-		else:
-			$CrouchAnimationPlayer.play(&"crouch_air")
-			crouched_air = true
-	elif not _wish_crouch and not uncrouch_shapecast.is_colliding():  # TODO: should only be called when ACTUALLY crouched, but this is needed to prevent partially crouching and not uncrouching automatically (due to the scuffed crouch() function)
-		#try_uncrouch(delta)
-		if crouched_ground:
-			$CrouchAnimationPlayer.play_backwards(&"crouch_ground")
-			crouched_ground = false
-		elif crouched_air:
-			$CrouchAnimationPlayer.play_backwards(&"crouch_air")
-			crouched_air = false
+	if _wish_crouch:
+		crouch(delta)
+	elif _crouch_state != CrouchState.STANDING:
+		try_uncrouch(delta)
 	
 	_process_movement(delta)
 
@@ -146,33 +145,60 @@ func _mouse_look(event: InputEventMouseMotion) -> void:
 	camera_pivot.rotation.x = clampf(camera_pivot.rotation.x, deg_to_rad(-70.0), deg_to_rad(90.0))
 
 
-func crouch(delta: float) -> void:
-	if collider.shape.height <= 0.8:
-		_is_crouched = true
+func crouch(_delta: float) -> void:
+	if _crouch_state != CrouchState.STANDING:
 		return
 	
-	collider.shape.height -= 7.0 * delta
-	collider.shape.height = clampf(collider.shape.height, 0.8, 1.6)
-	
-	mesh.mesh.height -= 7.0 * delta
-	mesh.mesh.height = clampf(mesh.mesh.height, 0.8, 1.6)
-	
-	#if is_on_floor():
-	#	move_and_collide(Vector3(0.0, -0.5 * delta, 0.0))
-	#else:
-	#	move_and_collide(Vector3(0.0, 0.5 * delta, 0.0))
+	if is_on_floor():
+		_crouch_ground()
+	else:
+		_crouch_air()
 
 
 # Returns a boolean whether the player can uncrouch or not
 func try_uncrouch(_delta: float) -> bool:
 	if uncrouch_shapecast.is_colliding():
 		return false
-	else:
-		collider.shape.height = 1.6
-		mesh.mesh.height = 1.6
-		#move_and_collide(Vector3(0.0, 0.1, 0.0))
-		_is_crouched = false
-		return true
+	
+	match _crouch_state:
+		CrouchState.CROUCHED_GROUND:
+			_uncrouch_ground()
+		CrouchState.CROUCHED_AIR:
+			_uncrouch_air()
+	
+	return true
+
+
+func _crouch_ground() -> void:
+	var tween := create_tween().set_parallel()
+	tween.tween_property(collider, "shape:height", collider_original_height / 2, 0.1)
+	tween.tween_property(collider, "position:y", collider_original_y_position / 2, 0.1)
+	tween.tween_property(camera_position, "position:y", (camera_position_original_y_position / 2) - 0.2, 0.1)  # Extra 0.2 is to prevent camera from near plane culling a low hanging ceiling
+	_crouch_state = CrouchState.CROUCHED_GROUND
+
+
+func _uncrouch_ground() -> void:
+	var tween := create_tween().set_parallel()
+	tween.tween_property(collider, "shape:height", collider_original_height, 0.1)
+	tween.tween_property(collider, "position:y", collider_original_y_position, 0.1)
+	tween.tween_property(camera_pivot.get_parent(), "position:y", camera_position_original_y_position, 0.1)
+	_crouch_state = CrouchState.STANDING
+
+
+func _crouch_air() -> void:
+	var tween := create_tween().set_parallel()
+	tween.tween_property(collider, "shape:height", collider_original_height / 2, 0.1)
+	tween.tween_property(collider, "position:y", collider_original_y_position * 1.5, 0.1)
+	tween.tween_property(uncrouch_shapecast, "position:y", uncrouch_shapecast_original_y_position * 2, 0.1)
+	_crouch_state = CrouchState.CROUCHED_AIR
+
+
+func _uncrouch_air() -> void:
+	var tween := create_tween().set_parallel()
+	tween.tween_property(collider, "shape:height", collider_original_height, 0.1)
+	tween.tween_property(collider, "position:y", collider_original_y_position, 0.1)
+	tween.tween_property(uncrouch_shapecast, "position:y", uncrouch_shapecast_original_y_position, 0.1)
+	_crouch_state = CrouchState.STANDING
 
 
 func accelerate(max_speed: float, delta: float) -> Vector3:

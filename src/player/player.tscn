@@ -1,8 +1,9 @@
-[gd_scene load_steps=12 format=3 uid="uid://uya6tppy0ihn"]
+[gd_scene load_steps=13 format=3 uid="uid://uya6tppy0ihn"]
 
 [ext_resource type="Script" uid="uid://xys1c8evc2qi" path="res://player/player.gd" id="1_oul6g"]
 [ext_resource type="Texture2D" uid="uid://cp6mcbyifrlk2" path="res://icon.svg" id="2_rkbax"]
 [ext_resource type="Script" uid="uid://ehrnlwhpytkr" path="res://player/camera_interpolation.gd" id="3_g1dw6"]
+[ext_resource type="Script" uid="uid://bwtoqvmq5o25v" path="res://player/mesh.gd" id="3_yw30f"]
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_oul6g"]
 height = 1.6
@@ -17,46 +18,6 @@ height = 1.6
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_g1dw6"]
 height = 0.8
-
-[sub_resource type="Animation" id="Animation_g1dw6"]
-resource_name = "crouch_ground"
-length = 0.1
-tracks/0/type = "value"
-tracks/0/imported = false
-tracks/0/enabled = true
-tracks/0/path = NodePath("Collider:shape:height")
-tracks/0/interp = 1
-tracks/0/loop_wrap = true
-tracks/0/keys = {
-"times": PackedFloat32Array(0, 0.1),
-"transitions": PackedFloat32Array(1, 1),
-"update": 0,
-"values": [1.6, 0.8]
-}
-tracks/1/type = "value"
-tracks/1/imported = false
-tracks/1/enabled = true
-tracks/1/path = NodePath("Collider:position")
-tracks/1/interp = 1
-tracks/1/loop_wrap = true
-tracks/1/keys = {
-"times": PackedFloat32Array(0, 0.1),
-"transitions": PackedFloat32Array(1, 1),
-"update": 0,
-"values": [Vector3(0, 0.8, 0), Vector3(0, 0.4, 0)]
-}
-tracks/2/type = "value"
-tracks/2/imported = false
-tracks/2/enabled = true
-tracks/2/path = NodePath("CameraPosition:position")
-tracks/2/interp = 1
-tracks/2/loop_wrap = true
-tracks/2/keys = {
-"times": PackedFloat32Array(0, 0.1),
-"transitions": PackedFloat32Array(1, 1),
-"update": 0,
-"values": [Vector3(0, 1.5, 0), Vector3(0, 0.7, 0)]
-}
 
 [sub_resource type="Animation" id="Animation_yw30f"]
 length = 0.001
@@ -124,6 +85,58 @@ tracks/1/keys = {
 "update": 0,
 "values": [Vector3(0, 0.8, 0), Vector3(0, 1.2, 0)]
 }
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("UncrouchShapecast:position")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.1),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [Vector3(0, 0.8, 0), Vector3(0, 1.6, 0)]
+}
+
+[sub_resource type="Animation" id="Animation_g1dw6"]
+resource_name = "crouch_ground"
+length = 0.1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Collider:shape:height")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.1),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [1.6, 0.8]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("Collider:position")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.1),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [Vector3(0, 0.8, 0), Vector3(0, 0.4, 0)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("CameraPosition:position")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.1),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [Vector3(0, 1.5, 0), Vector3(0, 0.7, 0)]
+}
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_yw30f"]
 _data = {
@@ -134,17 +147,17 @@ _data = {
 
 [node name="Player" type="CharacterBody3D"]
 script = ExtResource("1_oul6g")
-AUTO_BHOP = true
 
 [node name="Collider" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
 shape = SubResource("CylinderShape3D_oul6g")
 
-[node name="Mesh" type="MeshInstance3D" parent="."]
+[node name="Mesh" type="MeshInstance3D" parent="." node_paths=PackedStringArray("collider")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
-visible = false
 layers = 2
 mesh = SubResource("CylinderMesh_rkbax")
+script = ExtResource("3_yw30f")
+collider = NodePath("../Collider")
 
 [node name="CameraPosition" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
