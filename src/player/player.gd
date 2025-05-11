@@ -7,6 +7,8 @@ extends CharacterBody3D
 
 # TODO: Camera "jitter" when crouching mid-air
 
+@export_group("Debug")
+@export var DEBUG_THIRD_PERSON: bool = false
 @export_group("Controls")
 @export var AUTO_BHOP: bool = false
 @export var MOUSE_SENSITIVITY: float = 0.05
@@ -55,6 +57,10 @@ func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	self.floor_constant_speed = true  # Make player move at constant speed up slopes
 	self.floor_snap_length = 0.1  # Default value
+	
+	if DEBUG_THIRD_PERSON:
+		camera_pivot.position.y = 2.0
+		camera_pivot.position.z = 7.0
 
 
 func _exit_tree() -> void:
