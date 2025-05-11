@@ -76,14 +76,27 @@ func _unhandled_input(event: InputEvent) -> void:
 		_mouse_look(event as InputEventMouseMotion)
 
 
+var crouched_air: bool
+var crouched_ground: bool
 func _physics_process(delta: float) -> void:
 	_process_input()
 	
-	if _wish_crouch:
-		crouch(delta)
-	#elif _is_crouched:
-	else:  # TODO: should only be called when ACTUALLY crouched, but this is needed to prevent partially crouching and not uncrouching automatically (due to the scuffed crouch() function)
-		try_uncrouch(delta)
+	if _wish_crouch and not (crouched_ground or crouched_air):
+		#crouch(delta)
+		if is_on_floor():
+			$CrouchAnimationPlayer.play(&"crouch_ground")
+			crouched_ground = true
+		else:
+			$CrouchAnimationPlayer.play(&"crouch_air")
+			crouched_air = true
+	elif not _wish_crouch and not uncrouch_shapecast.is_colliding():  # TODO: should only be called when ACTUALLY crouched, but this is needed to prevent partially crouching and not uncrouching automatically (due to the scuffed crouch() function)
+		#try_uncrouch(delta)
+		if crouched_ground:
+			$CrouchAnimationPlayer.play_backwards(&"crouch_ground")
+			crouched_ground = false
+		elif crouched_air:
+			$CrouchAnimationPlayer.play_backwards(&"crouch_air")
+			crouched_air = false
 	
 	_process_movement(delta)
 
