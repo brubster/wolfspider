@@ -17,6 +17,7 @@ material = SubResource("StandardMaterial3D_rkbax")
 height = 1.6
 
 [node name="Player" type="CharacterBody3D"]
+floor_constant_speed = true
 script = ExtResource("1_oul6g")
 
 [node name="Collider" type="CollisionShape3D" parent="."]
@@ -41,3 +42,10 @@ physics_interpolation_mode = 2
 fov = 80.0
 script = ExtResource("3_g1dw6")
 follow_target = NodePath("..")
+
+[node name="CoyoteTimer" type="Timer" parent="."]
+process_callback = 0
+wait_time = 0.1
+one_shot = true
+
+[connection signal="timeout" from="CoyoteTimer" to="." method="_on_coyote_timer_timeout"]

@@ -30,6 +30,7 @@ extends CharacterBody3D
 @onready var camera_position := $CameraPosition as Node3D
 @onready var camera_pivot := %CameraPivot as Node3D
 @onready var collider := $Collider as CollisionShape3D
+@onready var coyote_timer := $CoyoteTimer as Timer
 
 # Values for crouch tweening
 @onready var camera_position_original_y_position: float = camera_position.position.y
@@ -43,6 +44,11 @@ var _wish_dir: Vector3
 var _wish_jump: bool
 var _wish_sprint: bool
 var _wish_crouch: bool
+
+## Whether the player collided with the floor on the previous frame
+var was_on_floor: bool
+## Whether the player is in "coyote time" - left the floor (without jumping) and should be allowed to jump
+var coyote: bool
 
 # State
 # -- TODO: Mainly for tracking animation to play? Idk
@@ -72,12 +78,12 @@ func _ready() -> void:
 		camera_pivot.position.z = 7.0
 	
 	Input.set_use_accumulated_input(false)  # https://yosoyfreeman.github.io/article/godot/tutorial/achieving-better-mouse-input-in-godot-4-the-perfect-camera-controller
-	
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-	self.floor_constant_speed = true  # Make player move at constant speed up slopes
-	self.floor_snap_length = 0.1  # Default value
 	
-	CROUCH_HEIGHT = clampf(CROUCH_HEIGHT, 0.1, collider.shape.height)
+	self.floor_constant_speed = true  # Make player move at constant speed up slopes
+	
+	# Sanity checks
+	CROUCH_HEIGHT = clampf(CROUCH_HEIGHT, 0.1, collider.shape.height)  # CROUCH_HEIGHT should not be higher than collider's height
 
 
 func _exit_tree() -> void:
@@ -99,9 +105,17 @@ func _physics_process(delta: float) -> void:
 	if _wish_crouch:
 		crouch(delta)
 	elif _crouch_state != CrouchState.STANDING:
-		try_uncrouch(delta)
+		uncrouch(delta)
 	
-	_process_movement(delta)
+	var jumped: bool
+	if _wish_jump:
+		jumped = jump(delta)
+	
+	if not jumped:
+		_process_movement(delta)
+	
+	was_on_floor = is_on_floor()
+	move_and_slide()
 
 
 func _process_input() -> void:
@@ -122,20 +136,18 @@ func _process_input() -> void:
 
 
 func _process_movement(delta: float) -> void:
+	# Checks that Player JUST left the floor
+	# Does not count jumping itself because of velocity.y check
+	if not is_on_floor() and was_on_floor and velocity.y <= 0.0:
+		coyote = true
+		coyote_timer.start()
+	
 	if is_on_floor():
-		# If _wish_jump is true, we won't apply friction for one frame to allow
-		# for "perfect" bunny hop
-		if _wish_jump:
-			velocity.y = JUMP_IMPULSE
-			velocity = update_velocity_air(delta)  # Use "air" to skip friction
-		else:
-			velocity = update_velocity_ground(get_max_speed_ground(), delta)
+		velocity = update_velocity_ground(get_max_speed_ground(), delta)
 	else:
 		# Only apply gravity while in air
 		velocity.y -= GRAVITY * delta
 		velocity = update_velocity_air(delta)
-	
-	move_and_slide()
 
 
 func _mouse_look(event: InputEventMouseMotion) -> void:
@@ -149,6 +161,16 @@ func _mouse_look(event: InputEventMouseMotion) -> void:
 	camera_pivot.rotation.x = clampf(camera_pivot.rotation.x, deg_to_rad(-70.0), deg_to_rad(90.0))
 
 
+## Returns a boolean; whether the player jumped or not
+func jump(delta: float) -> bool:
+	if is_on_floor() or coyote:
+		# Don't apply friction for one frame to allow for "perfect" bunny hop
+		velocity.y = JUMP_IMPULSE
+		velocity = update_velocity_air(delta)  # Use "air" to skip ground friction this frame
+		return true
+	return false
+
+
 func crouch(_delta: float) -> void:
 	if _crouch_state != CrouchState.STANDING:
 		return
@@ -159,8 +181,8 @@ func crouch(_delta: float) -> void:
 		_crouch_air()
 
 
-# Returns a boolean whether the player can uncrouch or not
-func try_uncrouch(_delta: float) -> bool:
+## Returns a boolean; whether the player could uncrouch or not
+func uncrouch(_delta: float) -> bool:
 	if test_move(global_transform, Vector3(0.0, collider_original_height - CROUCH_HEIGHT, 0.0)):
 		return false
 	
@@ -236,3 +258,7 @@ func get_max_speed_ground() -> float:  # TODO: can this design be improved?
 	if _crouch_state != CrouchState.STANDING:
 		return MAX_VELOCITY_CROUCH
 	return MAX_VELOCITY_SPRINT if _wish_sprint else MAX_VELOCITY_WALK
+
+
+func _on_coyote_timer_timeout() -> void:
+	coyote = false
