@@ -24,17 +24,19 @@ extends CharacterBody3D
 @export_subgroup("Air")
 @export var GRAVITY: float = 15.34
 @export var JUMP_IMPULSE: float = sqrt(2 * GRAVITY * 0.93)
+@export_group("Crouch")
+@export_range(0.5, 2.0) var CROUCH_HEIGHT: float = 1.0  # Should be less than collider.shape.height
 
 @onready var camera_position := $CameraPosition as Node3D
 @onready var camera_pivot := %CameraPivot as Node3D
-@onready var uncrouch_shapecast := $UncrouchShapecast as ShapeCast3D
 @onready var collider := $Collider as CollisionShape3D
 
-# Original values for crouch tweening
+# Values for crouch tweening
 @onready var camera_position_original_y_position: float = camera_position.position.y
 @onready var collider_original_height: float = collider.shape.height
 @onready var collider_original_y_position: float = collider.position.y
-@onready var uncrouch_shapecast_original_y_position: float = uncrouch_shapecast.position.y
+@onready var camera_distance_from_collider_top: float = collider_original_height - camera_position_original_y_position
+@onready var crouch_offset: float = collider_original_height - CROUCH_HEIGHT
 
 # Input variables
 var _wish_dir: Vector3
@@ -65,15 +67,17 @@ var _crouch_state: CrouchState = CrouchState.STANDING
 
 
 func _ready() -> void:
+	if DEBUG_THIRD_PERSON:
+		camera_pivot.position.y = 2.0
+		camera_pivot.position.z = 7.0
+	
 	Input.set_use_accumulated_input(false)  # https://yosoyfreeman.github.io/article/godot/tutorial/achieving-better-mouse-input-in-godot-4-the-perfect-camera-controller
 	
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	self.floor_constant_speed = true  # Make player move at constant speed up slopes
 	self.floor_snap_length = 0.1  # Default value
 	
-	if DEBUG_THIRD_PERSON:
-		camera_pivot.position.y = 2.0
-		camera_pivot.position.z = 7.0
+	CROUCH_HEIGHT = clampf(CROUCH_HEIGHT, 0.1, collider.shape.height)
 
 
 func _exit_tree() -> void:
@@ -157,7 +161,7 @@ func crouch(_delta: float) -> void:
 
 # Returns a boolean whether the player can uncrouch or not
 func try_uncrouch(_delta: float) -> bool:
-	if uncrouch_shapecast.is_colliding():
+	if test_move(global_transform, Vector3(0.0, collider_original_height - CROUCH_HEIGHT, 0.0)):
 		return false
 	
 	match _crouch_state:
@@ -171,9 +175,9 @@ func try_uncrouch(_delta: float) -> bool:
 
 func _crouch_ground() -> void:
 	var tween := create_tween().set_parallel()
-	tween.tween_property(collider, "shape:height", collider_original_height / 2, 0.1)
-	tween.tween_property(collider, "position:y", collider_original_y_position / 2, 0.1)
-	tween.tween_property(camera_position, "position:y", (camera_position_original_y_position / 2) - 0.2, 0.1)  # Extra 0.2 is to prevent camera from near plane culling a low hanging ceiling
+	tween.tween_property(collider, "shape:height", CROUCH_HEIGHT, 0.1)
+	tween.tween_property(collider, "position:y", CROUCH_HEIGHT / 2, 0.1)
+	tween.tween_property(camera_position, "position:y", CROUCH_HEIGHT - camera_distance_from_collider_top, 0.1)
 	_crouch_state = CrouchState.CROUCHED_GROUND
 
 
@@ -181,15 +185,14 @@ func _uncrouch_ground() -> void:
 	var tween := create_tween().set_parallel()
 	tween.tween_property(collider, "shape:height", collider_original_height, 0.1)
 	tween.tween_property(collider, "position:y", collider_original_y_position, 0.1)
-	tween.tween_property(camera_pivot.get_parent(), "position:y", camera_position_original_y_position, 0.1)
+	tween.tween_property(camera_position, "position:y", camera_position_original_y_position, 0.1)
 	_crouch_state = CrouchState.STANDING
 
 
 func _crouch_air() -> void:
 	var tween := create_tween().set_parallel()
-	tween.tween_property(collider, "shape:height", collider_original_height / 2, 0.1)
-	tween.tween_property(collider, "position:y", collider_original_y_position * 1.5, 0.1)
-	tween.tween_property(uncrouch_shapecast, "position:y", uncrouch_shapecast_original_y_position * 2, 0.1)
+	tween.tween_property(collider, "shape:height", CROUCH_HEIGHT, 0.1)
+	tween.tween_property(collider, "position:y", collider_original_height - CROUCH_HEIGHT / 2, 0.1)  # in this example, want 1.1? ==> 1.6 - 1.0 / 2
 	_crouch_state = CrouchState.CROUCHED_AIR
 
 
@@ -197,7 +200,6 @@ func _uncrouch_air() -> void:
 	var tween := create_tween().set_parallel()
 	tween.tween_property(collider, "shape:height", collider_original_height, 0.1)
 	tween.tween_property(collider, "position:y", collider_original_y_position, 0.1)
-	tween.tween_property(uncrouch_shapecast, "position:y", uncrouch_shapecast_original_y_position, 0.1)
 	_crouch_state = CrouchState.STANDING
 
 

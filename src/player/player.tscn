@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3 uid="uid://uya6tppy0ihn"]
+[gd_scene load_steps=8 format=3 uid="uid://uya6tppy0ihn"]
 
 [ext_resource type="Script" uid="uid://xys1c8evc2qi" path="res://player/player.gd" id="1_oul6g"]
 [ext_resource type="Texture2D" uid="uid://cp6mcbyifrlk2" path="res://icon.svg" id="2_rkbax"]
@@ -15,9 +15,6 @@ uv1_triplanar = true
 [sub_resource type="CylinderMesh" id="CylinderMesh_rkbax"]
 material = SubResource("StandardMaterial3D_rkbax")
 height = 1.6
-
-[sub_resource type="CylinderShape3D" id="CylinderShape3D_g1dw6"]
-height = 0.8
 
 [node name="Player" type="CharacterBody3D"]
 script = ExtResource("1_oul6g")
@@ -44,8 +41,3 @@ physics_interpolation_mode = 2
 fov = 80.0
 script = ExtResource("3_g1dw6")
 follow_target = NodePath("..")
-
-[node name="UncrouchShapecast" type="ShapeCast3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, -1, 8.74228e-08, 0, -8.74228e-08, -1, 0, 0.8, 0)
-shape = SubResource("CylinderShape3D_g1dw6")
-target_position = Vector3(0, -0.4, 0)
