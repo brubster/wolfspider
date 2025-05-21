@@ -46,8 +46,6 @@ var _wish_crouch: bool
 
 ## Whether the player collided with the floor on the previous frame
 var was_on_floor: bool
-## Whether the player is in "coyote time" - left the floor (without jumping) and should be allowed to jump
-var coyote: bool
 
 # State
 # -- TODO: Mainly for tracking animation to play? Idk
@@ -64,8 +62,11 @@ enum State {
 
 
 enum CrouchState {
+	## Player is standing up.
 	STANDING,
+	## Player crouched while standing on the ground.
 	CROUCHED_GROUND,
+	## Player crouched while in the air.
 	CROUCHED_AIR,
 }
 var _crouch_state: CrouchState = CrouchState.STANDING
@@ -138,7 +139,6 @@ func _process_movement(delta: float) -> void:
 	# Checks that Player JUST left the floor
 	# Does not count jumping itself because of velocity.y check
 	if not is_on_floor() and was_on_floor and velocity.y <= 0.0:
-		coyote = true
 		coyote_timer.start()
 	
 	if is_on_floor():
@@ -162,7 +162,7 @@ func _mouse_look(event: InputEventMouseMotion) -> void:
 
 ## Returns a boolean; whether the player jumped or not
 func jump(delta: float) -> bool:
-	if is_on_floor() or coyote:
+	if is_on_floor() or not coyote_timer.is_stopped():
 		# Don't apply friction for one frame to allow for "perfect" bunny hop
 		velocity.y = JUMP_IMPULSE
 		velocity = update_velocity_air(delta)  # Use "air" to skip ground friction this frame
@@ -265,7 +265,3 @@ func get_max_speed_ground() -> float:  # TODO: can this design be improved?
 	if _crouch_state != CrouchState.STANDING:
 		return MAX_VELOCITY_CROUCH
 	return MAX_VELOCITY_SPRINT if _wish_sprint else MAX_VELOCITY_WALK
-
-
-func _on_coyote_timer_timeout() -> void:
-	coyote = false
