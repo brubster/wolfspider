@@ -4,7 +4,6 @@ extends CharacterBody3D
 ## 
 ## Handles control input and player movement.
 ## TODO: player/weapon logic?
-## TODO: Camera "jitter" when crouching mid-air
 
 
 @export_group("Debug")
@@ -176,9 +175,11 @@ func crouch(_delta: float) -> void:
 		return
 	
 	if is_on_floor():
-		_crouch_ground()
+		_collider_crouch_ground()
+		_crouch_state = CrouchState.CROUCHED_GROUND
 	else:
-		_crouch_air()
+		_collider_crouch_air()
+		_crouch_state = CrouchState.CROUCHED_AIR
 
 
 ## Returns a boolean; whether the player could uncrouch or not
@@ -188,41 +189,47 @@ func uncrouch(_delta: float) -> bool:
 	
 	match _crouch_state:
 		CrouchState.CROUCHED_GROUND:
-			_uncrouch_ground()
+			_collider_uncrouch_ground()
 		CrouchState.CROUCHED_AIR:
-			_uncrouch_air()
+			_collider_uncrouch_air()
 	
+	_crouch_state = CrouchState.STANDING
 	return true
 
 
-func _crouch_ground() -> void:
+## Tween the collider (and camera) downward like it's crouching down
+func _collider_crouch_ground() -> void:
 	var tween := create_tween().set_parallel()
 	tween.tween_property(collider, "shape:height", CROUCH_HEIGHT, 0.1)
 	tween.tween_property(collider, "position:y", CROUCH_HEIGHT / 2, 0.1)
 	tween.tween_property(camera_position, "position:y", CROUCH_HEIGHT - camera_distance_from_collider_top, 0.1)
-	_crouch_state = CrouchState.CROUCHED_GROUND
 
 
-func _uncrouch_ground() -> void:
+## Undo the tween in `_collider_crouch_ground`
+func _collider_uncrouch_ground() -> void:
 	var tween := create_tween().set_parallel()
 	tween.tween_property(collider, "shape:height", collider_original_height, 0.1)
 	tween.tween_property(collider, "position:y", collider_original_y_position, 0.1)
 	tween.tween_property(camera_position, "position:y", camera_position_original_y_position, 0.1)
-	_crouch_state = CrouchState.STANDING
 
 
-func _crouch_air() -> void:
+## Tween the collider upward like it's pulling its legs up midair
+func _collider_crouch_air() -> void:
 	var tween := create_tween().set_parallel()
 	tween.tween_property(collider, "shape:height", CROUCH_HEIGHT, 0.1)
-	tween.tween_property(collider, "position:y", collider_original_height - CROUCH_HEIGHT / 2, 0.1)  # in this example, want 1.1? ==> 1.6 - 1.0 / 2
-	_crouch_state = CrouchState.CROUCHED_AIR
+	tween.tween_property(collider, "position:y", collider_original_height - CROUCH_HEIGHT / 2, 0.1)
+	
+	# "Jitter" the camera to give the player a visual cue that they crouched midair
+	var camera_jitter := create_tween()
+	camera_jitter.tween_property(camera_position, "position:y", camera_position_original_y_position - 0.12, 0.05)
+	camera_jitter.tween_property(camera_position, "position:y", camera_position_original_y_position, 0.05)
 
 
-func _uncrouch_air() -> void:
+## Undo the tween in `_collider_crouch_air`
+func _collider_uncrouch_air() -> void:
 	var tween := create_tween().set_parallel()
 	tween.tween_property(collider, "shape:height", collider_original_height, 0.1)
 	tween.tween_property(collider, "position:y", collider_original_y_position, 0.1)
-	_crouch_state = CrouchState.STANDING
 
 
 func accelerate(max_speed: float, delta: float) -> Vector3:
