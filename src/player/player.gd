@@ -3,7 +3,6 @@ extends CharacterBody3D
 ## Self-contained player script
 ## 
 ## Handles control input and player movement.
-## TODO: player/weapon logic?
 
 
 @export_group("Debug")
@@ -47,29 +46,16 @@ var _wish_crouch: bool
 ## Whether the player collided with the floor on the previous frame
 var was_on_floor: bool
 
-# State
-# -- TODO: Mainly for tracking animation to play? Idk
-enum State {
-	IDLE,
-	WALK,
-	SPRINT,
-	CROUCH,
-	SLIDE,
-	JUMP,  # TODO: needed?
-	FALL,  #       needed?
-}
-#var _state: State = State.IDLE
-
 
 enum CrouchState {
 	## Player is standing up.
-	STANDING,
+	STAND,
 	## Player crouched while standing on the ground.
-	CROUCHED_GROUND,
+	CROUCH_GROUND,
 	## Player crouched while in the air.
-	CROUCHED_AIR,
+	CROUCH_AIR,
 }
-var _crouch_state: CrouchState = CrouchState.STANDING
+var _crouch_state: CrouchState = CrouchState.STAND
 
 
 func _ready() -> void:
@@ -102,9 +88,14 @@ func _unhandled_input(event: InputEvent) -> void:
 func _physics_process(delta: float) -> void:
 	_process_input()
 	
+	# Checks that Player JUST fell off a ledge
+	# Does not count jumping (positive y velocity) because of velocity.y check
+	if just_left_floor() and velocity.y <= 0.0:
+		coyote_timer.start()
+	
 	if _wish_crouch:
 		crouch(delta)
-	elif _crouch_state != CrouchState.STANDING:
+	elif _crouch_state != CrouchState.STAND:
 		uncrouch(delta)
 	
 	var jumped: bool
@@ -136,11 +127,6 @@ func _process_input() -> void:
 
 
 func _process_movement(delta: float) -> void:
-	# Checks that Player JUST left the floor
-	# Does not count jumping itself because of velocity.y check
-	if not is_on_floor() and was_on_floor and velocity.y <= 0.0:
-		coyote_timer.start()
-	
 	if is_on_floor():
 		velocity = update_velocity_ground(get_max_speed_ground(), delta)
 	else:
@@ -171,15 +157,15 @@ func jump(delta: float) -> bool:
 
 
 func crouch(_delta: float) -> void:
-	if _crouch_state != CrouchState.STANDING:
+	if _crouch_state != CrouchState.STAND:
 		return
 	
 	if is_on_floor():
 		_collider_crouch_ground()
-		_crouch_state = CrouchState.CROUCHED_GROUND
+		_crouch_state = CrouchState.CROUCH_GROUND
 	else:
 		_collider_crouch_air()
-		_crouch_state = CrouchState.CROUCHED_AIR
+		_crouch_state = CrouchState.CROUCH_AIR
 
 
 ## Returns a boolean; whether the player could uncrouch or not
@@ -188,12 +174,12 @@ func uncrouch(_delta: float) -> bool:
 		return false
 	
 	match _crouch_state:
-		CrouchState.CROUCHED_GROUND:
+		CrouchState.CROUCH_GROUND:
 			_collider_uncrouch_ground()
-		CrouchState.CROUCHED_AIR:
+		CrouchState.CROUCH_AIR:
 			_collider_uncrouch_air()
 	
-	_crouch_state = CrouchState.STANDING
+	_crouch_state = CrouchState.STAND
 	return true
 
 
@@ -261,7 +247,15 @@ func update_velocity_air(delta: float) -> Vector3:
 	return accelerate(MAX_VELOCITY_AIR, delta)
 
 
-func get_max_speed_ground() -> float:  # TODO: can this design be improved?
-	if _crouch_state != CrouchState.STANDING:
+func get_max_speed_ground() -> float:
+	if _crouch_state != CrouchState.STAND:
 		return MAX_VELOCITY_CROUCH
 	return MAX_VELOCITY_SPRINT if _wish_sprint else MAX_VELOCITY_WALK
+
+
+func just_left_floor() -> bool:
+	return was_on_floor and not is_on_floor()
+
+
+func just_landed() -> bool:
+	return not was_on_floor and is_on_floor()

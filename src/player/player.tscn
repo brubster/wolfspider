@@ -24,12 +24,12 @@ script = ExtResource("1_oul6g")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
 shape = SubResource("CylinderShape3D_oul6g")
 
-[node name="Mesh" type="MeshInstance3D" parent="." node_paths=PackedStringArray("collider")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+[node name="Mesh" type="MeshInstance3D" parent="Collider" node_paths=PackedStringArray("collider")]
 layers = 2
 mesh = SubResource("CylinderMesh_rkbax")
+skeleton = NodePath("../..")
 script = ExtResource("3_yw30f")
-collider = NodePath("../Collider")
+collider = NodePath("..")
 
 [node name="CameraPosition" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -0.4)
